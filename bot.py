@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 import requests
 
-TOKEN 
+TOKEN = os.environ.get("BOT_TOKEN")
 
 def get_metar(icao):
     url = f"https://aviationweather.gov/api/data/metar?ids={icao}&format=raw"
