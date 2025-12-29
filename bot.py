@@ -1,51 +1,101 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
+import os
 import requests
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
 
-TOKEN = "8523983515:AAHzxuZ4FYX_Hi5s3CyxTjwdTeRRtKjAJmE"
+# =====================
+# CONFIG
+# =====================
+TOKEN = os.environ.get("BOT_TOKEN")
+
+# =====================
+# COMMANDS
+# =====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "✈️ Fly and Learn – METAR Bot\n\n"
-        "How to use:\n"
-        "• Send a 4-letter ICAO code to get METAR\n"
-        "• Example: MRPV\n\n"
-        "Use /help for more options"
+        "✈️ Fly and Learn — METAR & TAF Bot\n"
+        "By Casky 🧑‍✈️\n\n"
+        "📌 How to use:\n"
+        "• Send ICAO code → METAR\n"
+        "  Example: MRPV\n"
+        "• Send: TAF MRPV\n\n"
+        "Commands:\n"
+        "/start – Welcome\n"
+        "/help – Help\n"
     )
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🧭 Fly and Learn – Help\n\n"
+        "🧭 Fly and Learn — Help\n\n"
         "METAR:\n"
-        "• Send a 4-letter ICAO code\n"
+        "• Send 4-letter ICAO code\n"
         "  Example: MRPV\n\n"
-        "Commands:\n"
-        "• /start – Welcome message\n"
-        "• /help – This help message\n\n"
-        "More features coming soon ✈️"
+        "TAF:\n"
+        "• Send: TAF + ICAO\n"
+        "  Example: TAF MRPV\n\n"
+        "More features coming soon ✈️\n"
+        "— Casky"
     )
-def get_metar(icao):
+
+# =====================
+# WEATHER FUNCTIONS
+# =====================
+def get_metar(icao: str) -> str:
     url = f"https://aviationweather.gov/api/data/metar?ids={icao}&format=raw"
     r = requests.get(url)
     if r.status_code == 200 and r.text.strip():
-        return r.text.strip()
-    else:
-        return "METAR not available."
+        return f"🌤 METAR {icao}\n{r.text.strip()}"
+    return "❌ METAR not available."
 
+def get_taf(icao: str) -> str:
+    url = f"https://aviationweather.gov/api/data/taf?ids={icao}&format=raw"
+    r = requests.get(url)
+    if r.status_code == 200 and r.text.strip():
+        return f"🌦 TAF {icao}\n{r.text.strip()}"
+    return "❌ TAF not available."
+
+# =====================
+# MESSAGE HANDLER
+# =====================
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip().upper()
 
+    if text.startswith("TAF "):
+        icao = text.replace("TAF ", "").strip()
+        if len(icao) == 4 and icao.isalpha():
+            await update.message.reply_text(get_taf(icao))
+        else:
+            await update.message.reply_text("Use: TAF ICAO (example: TAF MRPV)")
+        return
+
     if len(text) == 4 and text.isalpha():
-        metar = get_metar(text)
-        await update.message.reply_text(metar)
-    else:
-        await update.message.reply_text(
-            "Send a 4-letter ICAO code (example: MRPV)"
-        )
+        await update.message.reply_text(get_metar(text))
+        return
 
-app = ApplicationBuilder().token(TOKEN).build()
+    await update.message.reply_text(
+        "Send ICAO code (MRPV)\n"
+        "or: TAF MRPV\n"
+        "Use /help for more info"
+    )
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("help", help_command))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+# =====================
+# MAIN
+# =====================
+def main():
+    app = ApplicationBuilder().token(TOKEN).build()
 
-print("✈️ Fly and Learn METAR bot running...")
-app.run_polling()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    print("✈️ Fly and Learn bot v1.1 running — by Casky")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
